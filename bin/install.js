@@ -163,39 +163,11 @@ async function configureSettings(claudeDir, installType) {
 async function main() {
   console.log(chalk.cyan(BANNER));
   console.log('This installer will set up persistent memory for your Claude Code subagents.\n');
+  console.log(chalk.gray('Installing in current project (.claude directory)\n'));
 
-  // Check if .claude exists
-  const hasProjectClaude = fs.existsSync('.claude');
-  const hasGlobalClaude = fs.existsSync(path.join(process.env.HOME, '.claude'));
-
-  // Prompt for installation type
-  const response = await prompts({
-    type: 'select',
-    name: 'installType',
-    message: 'Where would you like to install the memory system?',
-    choices: [
-      { 
-        title: 'Project (.claude)', 
-        value: 'project', 
-        description: 'Install in current project (recommended)' 
-      },
-      { 
-        title: 'Global (~/.claude)', 
-        value: 'global', 
-        description: 'Install globally for all projects' 
-      }
-    ],
-    initial: hasProjectClaude ? 0 : (hasGlobalClaude ? 1 : 0)
-  });
-
-  if (!response.installType) {
-    console.log(chalk.red('\n✖ Installation cancelled'));
-    process.exit(1);
-  }
-
-  const claudeDir = response.installType === 'global' 
-    ? path.join(process.env.HOME, '.claude')
-    : '.claude';
+  // Default to project installation (no prompt)
+  const response = { installType: 'project' };
+  const claudeDir = '.claude';
 
   // Check for existing installation
   if (fs.existsSync(path.join(claudeDir, 'memory'))) {

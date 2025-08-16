@@ -8,10 +8,14 @@
 ## 🚀 Quick Install
 
 ```bash
+# Navigate to your project directory first!
+cd your-project
+
+# Then run the installer
 npx claude-subagent-memory
 ```
 
-One command gives your Claude Code subagents persistent memory and adaptive learning across sessions.
+This will install the memory system in your project's `.claude/` directory.
 
 ## 🎯 The Problem
 
@@ -137,18 +141,24 @@ Session 3: task-executor enhances auth → builds on previous implementation
 
 ### Option 1: NPX (Recommended)
 ```bash
+cd your-project  # Important: Be in your project directory!
 npx claude-subagent-memory
 ```
 
 ### Option 2: Clone Repository
 ```bash
-git clone https://github.com/theo-nash/claude-memory-system.git
-cd claude-memory-system
-npm run setup
+cd your-project  # Navigate to your project first
+git clone https://github.com/theo-nash/claude-memory-system.git /tmp/claude-memory-system
+cd /tmp/claude-memory-system
+npm install
+node bin/install.js
 ```
 
 ### Option 3: Manual Setup
-Copy the `template/` directory to your `.claude/` folder and run:
+```bash
+cd your-project  # Navigate to your project first
+```
+Copy the `template/` directory contents to your `.claude/` folder and run:
 ```bash
 chmod +x .claude/scripts/*
 chmod +x .claude/hooks/*.py
