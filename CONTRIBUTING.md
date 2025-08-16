@@ -24,8 +24,8 @@ Thank you for your interest in contributing! This project aims to solve the pers
 
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/claude-subagent-memory.git
-cd claude-subagent-memory
+git clone https://github.com/yourusername/claude-memory-system.git
+cd claude-memory-system
 
 # Install dependencies
 npm install

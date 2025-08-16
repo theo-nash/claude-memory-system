@@ -12,13 +12,13 @@
     "persistent-memory",
     "knowledge-management"
   ],
-  "homepage": "https://github.com/yourusername/claude-subagent-memory#readme",
+  "homepage": "https://github.com/theo-nash/claude-memory-system#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/claude-subagent-memory/issues"
+    "url": "https://github.com/theo-nash/claude-memory-system/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/claude-subagent-memory.git"
+    "url": "git+https://github.com/theo-nash/claude-memory-system.git"
   },
   "license": "MIT",
   "author": "",

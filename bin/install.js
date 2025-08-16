@@ -332,7 +332,7 @@ async function main() {
     spinner.fail(chalk.red('Installation failed'));
     console.error(chalk.red('\n✖ Error:'), error.message);
     console.log(chalk.gray('\nFor help, please visit:'));
-    console.log(chalk.cyan('https://github.com/yourusername/claude-subagent-memory/issues\n'));
+    console.log(chalk.cyan('https://github.com/theo-nash/claude-memory-system/issues\n'));
     process.exit(1);
   }
 }

@@ -142,8 +142,8 @@ npx claude-subagent-memory
 
 ### Option 2: Clone Repository
 ```bash
-git clone https://github.com/yourusername/claude-subagent-memory.git
-cd claude-subagent-memory
+git clone https://github.com/theo-nash/claude-memory-system.git
+cd claude-memory-system
 npm run setup
 ```
 
