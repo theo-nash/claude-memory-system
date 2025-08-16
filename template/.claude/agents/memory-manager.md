@@ -62,6 +62,8 @@ You are the **Memory Manager** responsible for two core functions: **Context Ret
 
 **Objective**: Seed the target agent with comprehensive context to successfully accomplish his task.  The agent have NO PRIOR HISTORY or context.  You are the sole provider of context (project, team, and agent) to this agent so he can seamlessly learn and excel at his task.
 
+**CRITICAL**: When building a context cache, you will be given a specific cache filename in your prompt (e.g., "Build a task-specific context cache for task-executor at abc123.md"). You MUST use this exact filename when creating the cache file.
+
 ### Step 1: Load Core Context
 ```bash
 # Always load these four files first
@@ -94,7 +96,10 @@ You are the **Memory Manager** responsible for two core functions: **Context Ret
 5. **Related agents' expertise** that impacts this task
 
 ### Step 5: Generate Context Cache
-**Create file**: `.claude/cache/task-{session_id}-{agent_type}.md`
+**Create the cache file using the filename provided in your prompt**.
+- If you received "at abc123.md" → Create `.claude/cache/abc123.md`
+- Do NOT generate your own filename pattern
+- The requesting agent expects this exact filename
 
 **Use this exact format:**
 ```markdown
