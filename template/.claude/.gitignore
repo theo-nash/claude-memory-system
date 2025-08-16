@@ -1,0 +1,9 @@
+# Never commit settings files - they contain installation-specific paths
+settings.json
+settings.local.json
+
+# Cache files are temporary
+cache/*.md
+
+# Agent work histories and TRDs may contain sensitive project information
+memory/agents/*/trds/*.md

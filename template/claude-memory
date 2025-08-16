@@ -1,0 +1,320 @@
+#!/bin/bash
+# Claude Memory Management Wrapper Script
+# 
+# This script provides a simple command-line interface to the memory-manager subagent
+# for loading context, updating memories, and processing TRDs with improved error handling.
+
+set -e
+
+# Color codes for output
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+print_status() {
+    echo -e "${GREEN}✅ $1${NC}"
+}
+
+print_info() {
+    echo -e "${BLUE}🧠 $1${NC}"
+}
+
+print_warning() {
+    echo -e "${YELLOW}⚠️ $1${NC}"
+}
+
+print_error() {
+    echo -e "${RED}❌ $1${NC}"
+}
+
+print_help() {
+    echo "Claude Memory Management System"
+    echo "=============================="
+    echo ""
+    echo "Usage:"
+    echo "  claude-memory load-context <agent-name> \"<task-description>\""
+    echo "  claude-memory update-memories <agent-name> \"<insights>\""
+    echo "  claude-memory process-trd <agent-name> <trd-file-path>"
+    echo "  claude-memory status"
+    echo "  claude-memory --help"
+    echo ""
+    echo "Examples:"
+    echo "  claude-memory load-context sdk-protocol-specialist \"Analyze Uniswap V4 hooks\""
+    echo "  claude-memory update-memories sdk-protocol-specialist \"Discovered gas estimation patterns\""
+    echo "  claude-memory process-trd sdk-protocol-specialist .claude/memory/agents/sdk/trds/trd-2024-01-15.md"
+    echo "  claude-memory status"
+    echo ""
+    echo "The memory system uses structured files to maintain agent knowledge:"
+    echo "  • completed-tasks.md - Task history and patterns"
+    echo "  • lessons-learned.md - Key insights and discoveries"
+    echo "  • best-practices.md - Proven methodologies"
+    echo "  • pitfalls-to-avoid.md - Documented failures and warnings"
+    echo "  • technical-knowledge.md - Domain-specific expertise"
+    echo "  • team-coordination.md - Cross-agent collaboration insights"
+}
+
+# Detect if we're in a project context or global context
+detect_memory_context() {
+    if [[ -f ".claude/agents/memory-manager.md" ]]; then
+        export MEMORY_CONTEXT="project"
+        export MEMORY_MANAGER_PATH=".claude/agents/memory-manager.md"
+        export MEMORY_DIR=".claude/memory/agents"
+        export CLAUDE_DIR=".claude"
+    elif [[ -f "$HOME/.claude/agents/memory-manager.md" ]]; then
+        export MEMORY_CONTEXT="global"
+        export MEMORY_MANAGER_PATH="$HOME/.claude/agents/memory-manager.md"
+        export MEMORY_DIR="$HOME/.claude/memory/agents"
+        export CLAUDE_DIR="$HOME/.claude"
+    else
+        print_error "memory-manager subagent not found in project (.claude/) or global (~/.claude/) directories"
+        echo ""
+        echo "To fix this:"
+        echo "1. Run the setup script: bash integrated_memory_setup.sh"
+        echo "2. Or manually create the memory-manager subagent"
+        echo "3. Restart Claude Code to load the configuration"
+        exit 1
+    fi
+    
+    print_info "Using $MEMORY_CONTEXT memory context ($MEMORY_MANAGER_PATH)"
+}
+
+# Enhanced status command
+show_status() {
+    detect_memory_context
+    
+    echo "Memory System Status"
+    echo "==================="
+    echo ""
+    echo "Context: $MEMORY_CONTEXT"
+    echo "Location: $CLAUDE_DIR"
+    echo "Memory Directory: $MEMORY_DIR"
+    echo ""
+    
+    # Check memory-manager
+    if [[ -f "$MEMORY_MANAGER_PATH" ]]; then
+        print_status "memory-manager subagent: Available"
+    else
+        print_error "memory-manager subagent: Missing"
+    fi
+    
+    # Check memory directory
+    if [[ -d "$MEMORY_DIR" ]]; then
+        print_status "Memory directory: Exists"
+        
+        # Count agents with memories
+        local agent_count=0
+        for agent_dir in "$MEMORY_DIR"/*; do
+            if [[ -d "$agent_dir" ]]; then
+                agent_count=$((agent_count + 1))
+            fi
+        done
+        echo "  Agents with memories: $agent_count"
+        
+        # List agents and their memory files
+        if [[ $agent_count -gt 0 ]]; then
+            echo ""
+            echo "Agents with memory files:"
+            for agent_dir in "$MEMORY_DIR"/*; do
+                if [[ -d "$agent_dir" ]]; then
+                    local agent_name=$(basename "$agent_dir")
+                    local file_count=$(find "$agent_dir" -name "*.md" 2>/dev/null | wc -l)
+                    local trd_count=0
+                    if [[ -d "$agent_dir/trds" ]]; then
+                        trd_count=$(find "$agent_dir/trds" -name "*.md" 2>/dev/null | wc -l)
+                    fi
+                    echo "  • $agent_name: $file_count memory files, $trd_count TRDs"
+                fi
+            done
+        fi
+    else
+        print_warning "Memory directory: Not initialized"
+    fi
+}
+
+# Check if claude command is available
+check_claude_cli() {
+    if ! command -v claude &> /dev/null; then
+        print_error "Claude Code CLI not found in PATH"
+        echo ""
+        echo "To fix this:"
+        echo "1. Ensure Claude Code is installed"
+        echo "2. Add the 'claude' command to your PATH"
+        echo "3. Restart your terminal"
+        exit 1
+    fi
+}
+
+# Enhanced command validation
+validate_command() {
+    local command="$1"
+    local agent_name="$2"
+    local content="$3"
+    
+    case "$command" in
+        "load-context")
+            if [[ -z "$agent_name" ]]; then
+                print_error "Agent name is required for load-context command"
+                echo "Usage: claude-memory load-context <agent-name> \"<task-description>\""
+                exit 1
+            fi
+            ;;
+        "update-memories")
+            if [[ -z "$agent_name" ]]; then
+                print_error "Agent name is required for update-memories command"
+                echo "Usage: claude-memory update-memories <agent-name> \"<insights>\""
+                exit 1
+            fi
+            if [[ -z "$content" ]]; then
+                print_error "Insights content is required for update-memories command"
+                echo "Usage: claude-memory update-memories <agent-name> \"<insights>\""
+                exit 1
+            fi
+            ;;
+        "process-trd")
+            if [[ -z "$agent_name" ]]; then
+                print_error "Agent name is required for process-trd command"
+                echo "Usage: claude-memory process-trd <agent-name> <trd-file-path>"
+                exit 1
+            fi
+            if [[ -z "$content" ]]; then
+                print_error "TRD file path is required for process-trd command"
+                echo "Usage: claude-memory process-trd <agent-name> <trd-file-path>"
+                exit 1
+            fi
+            if [[ ! -f "$content" ]]; then
+                print_error "TRD file not found: $content"
+                echo "Please provide a valid path to the TRD file"
+                exit 1
+            fi
+            ;;
+        *)
+            print_error "Invalid command: $command"
+            echo "Valid commands: load-context, update-memories, process-trd, status"
+            echo "Use --help for more information"
+            exit 1
+            ;;
+    esac
+}
+
+# Execute memory command through Claude Code
+execute_memory_command() {
+    local prompt="$1"
+    local operation="$2"
+    local agent_name="$3"
+    
+    echo ""
+    print_info "Executing $operation for $agent_name..."
+    echo ""
+    
+    # Record start time
+    local start_time=$(date +%s)
+    
+    # Execute the command through Claude Code
+    local result
+    result=$(claude "$prompt" 2>&1) || true
+    
+    # Display the result
+    echo "$result"
+    
+    # Check if the operation was successful
+    if [[ "$result" == *"completed"* ]] || [[ "$result" == *"updated"* ]] || [[ "$result" == *"processed"* ]]; then
+        # Calculate duration
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo ""
+        print_status "$operation completed successfully (${duration}s)"
+        
+        # Provide helpful next steps
+        case "$operation" in
+            "Context loading")
+                echo ""
+                print_info "Next steps:"
+                echo "1. Review the memory analysis above"
+                echo "2. Use the recommended approach for your task"
+                echo "3. Avoid the documented pitfalls"
+                echo "4. Your insights will be automatically captured when you complete your work"
+                ;;
+            "Memory update")
+                echo ""
+                print_info "Memory has been updated for $agent_name"
+                echo "Future tasks will benefit from these insights"
+                ;;
+            "TRD processing")
+                echo ""
+                print_info "TRD has been processed for $agent_name"
+                echo "Knowledge has been spread to appropriate memory files"
+                ;;
+        esac
+        
+        return 0
+    else
+        echo ""
+        print_error "$operation failed"
+        echo ""
+        print_info "Troubleshooting suggestions:"
+        echo "1. Check if Claude Code is running properly"
+        echo "2. Verify memory-manager subagent exists: ls -la $MEMORY_MANAGER_PATH"
+        echo "3. Try the status command: claude-memory status"
+        echo "4. Restart Claude Code and try again"
+        return 1
+    fi
+}
+
+# Main script logic
+main() {
+    # Handle help and status commands early
+    case "${1:-}" in
+        "--help"|"-h"|"help")
+            print_help
+            exit 0
+            ;;
+        "status")
+            show_status
+            exit 0
+            ;;
+        "")
+            print_error "No command specified"
+            echo "Use --help for usage information"
+            exit 1
+            ;;
+    esac
+    
+    # Check dependencies
+    check_claude_cli
+    detect_memory_context
+    
+    # Parse command line arguments
+    local command="$1"
+    local agent_name="$2"
+    local content="$3"
+    
+    # Validate command and arguments
+    validate_command "$command" "$agent_name" "$content"
+    
+    # Execute the appropriate command
+    case "$command" in
+        "load-context")
+            local task_desc="${content:-general task}"
+            local prompt="Use the memory-manager subagent to load context for $agent_name with task: \"$task_desc\""
+            execute_memory_command "$prompt" "Context loading" "$agent_name"
+            ;;
+        "update-memories")
+            local prompt="Use the memory-manager subagent to update $agent_name memories with: \"$content\""
+            execute_memory_command "$prompt" "Memory update" "$agent_name"
+            ;;
+        "process-trd")
+            local trd_path="$content"
+            local prompt="Use the memory-manager subagent to process the self-generated TRD from $agent_name. Read the TRD file at: $trd_path and update the appropriate memory files based on its significance level and content."
+            execute_memory_command "$prompt" "TRD processing" "$agent_name"
+            ;;
+    esac
+    
+    # Final success message
+    echo ""
+    print_status "Memory operation completed for $agent_name (context: $MEMORY_CONTEXT)"
+}
+
+# Run main function with all arguments
+main "$@"

@@ -1,0 +1,48 @@
+{
+  "name": "claude-subagent-memory",
+  "version": "1.0.0",
+  "description": "Persistent memory and learning system for Claude Code subagents",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "subagents",
+    "memory",
+    "ai",
+    "llm",
+    "persistent-memory",
+    "knowledge-management"
+  ],
+  "homepage": "https://github.com/yourusername/claude-subagent-memory#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/claude-subagent-memory/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/claude-subagent-memory.git"
+  },
+  "license": "MIT",
+  "author": "",
+  "main": "index.js",
+  "bin": {
+    "claude-subagent-memory": "./bin/install.js"
+  },
+  "files": [
+    "bin/",
+    "template/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "setup": "node bin/install.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.1.1",
+    "ora": "^5.4.1",
+    "prompts": "^2.4.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
