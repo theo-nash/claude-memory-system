@@ -1,9 +1,10 @@
 # Claude Code Subagent Memory System
 
-**Persistent memory and learning for Claude Code subagents - smart agents that never lose context**
+**Zero-dependency persistent memory for Claude Code subagents - orchestrated through a specialized subagent and native hook mechanisms**
 
 [![npm version](https://img.shields.io/npm/v/claude-subagent-memory.svg)](https://www.npmjs.com/package/claude-subagent-memory)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
 
 ## 🚀 Quick Install
 
@@ -31,13 +32,14 @@ This will install the memory system in your project's `.claude/` directory.
 
 ## ✨ The Solution
 
-This system provides **automatic persistent memory** for all your Claude Code subagents through:
+This **zero-dependency** system orchestrates persistent memory through Claude Code's native capabilities:
 
-- 📝 **Task Reflection Documents (TRDs)** - Subagents document their learnings
-- 🧠 **Memory-Manager Subagent** - Intelligently coordinates knowledge
-- 🔄 **Automatic Hooks** - Context loads when subagents start, saves when they finish
-- 📚 **Structured Memory Files** - Organized, searchable knowledge base
-- ⚡ **Slash Commands** - Easy memory operations in Claude Code
+- 🎯 **Centralized Orchestration** - A specialized `memory-manager` subagent coordinates all memory operations
+- 🔄 **Native Hook Mechanisms** - Leverages Claude Code's built-in SessionStart, PreToolUse, and SubagentStop hooks
+- 📝 **Task Reflection Documents (TRDs)** - Subagents self-document their learnings and discoveries
+- 🚫 **No External Dependencies** - Purely uses Claude Code's native subagent and hook systems
+- 📚 **Structured Memory Files** - Git-friendly markdown knowledge base
+- ⚡ **Slash Commands** - Native Claude Code commands for memory operations
 
 ## 📦 What Gets Installed
 
@@ -71,12 +73,15 @@ This system provides **automatic persistent memory** for all your Claude Code su
 
 ## 🎮 How It Works
 
+### Architecture: Zero-Dependency Orchestration
+The system achieves persistent memory **without any external dependencies** by leveraging Claude Code's native subagent system. A specialized `memory-manager` subagent acts as the central coordinator, invoked automatically through hook mechanisms to manage all memory operations.
+
 ### Automatic Workflow
 1. **You invoke a subagent** → `Use task-executor to implement feature X`
-2. **PreToolUse hook fires** → Loads relevant context via memory-manager
+2. **PreToolUse hook fires** → Invokes `memory-manager` subagent to load relevant context
 3. **Subagent works** → Has full awareness of past work and lessons
 4. **Subagent creates TRD** → Documents discoveries before completing
-5. **SubagentStop hook fires** → Processes TRD, updates memories
+5. **SubagentStop hook fires** → Invokes `memory-manager` to process TRD and update memories
 6. **Knowledge saved** → Available for all future subagent sessions
 
 ### Manual Operations via Slash Commands
@@ -166,7 +171,9 @@ chmod +x .claude/hooks/*.py
 
 ## 💡 Key Features
 
-- **Zero Configuration** - Works out of the box
+- **Zero Dependencies** - Pure Claude Code solution using native subagents and hooks
+- **Centralized Orchestration** - Single `memory-manager` subagent coordinates all operations
+- **Zero Configuration** - Works out of the box with Claude Code's built-in capabilities
 - **Token Efficient** - Only loads relevant context (1500-3000 tokens)
 - **Git Friendly** - All memories in readable markdown
 - **Graceful Degradation** - Failures don't block subagent work
@@ -193,6 +200,18 @@ Built by the Claude Code community to solve the subagent memory problem.
 
 ---
 
-**Transform your Claude Code subagents from stateless workers into a continuously learning team!**
+## 🏗️ Why Zero Dependencies?
+
+This system is built entirely on Claude Code's native capabilities:
+- **Native Subagents** - The `memory-manager` is a standard Claude Code subagent
+- **Native Hooks** - Uses Claude Code's built-in hook system for automation
+- **Native Commands** - Slash commands are standard Claude Code commands
+- **Native File Operations** - Uses only Read/Write/Edit tools available to all subagents
+
+**Result:** No external packages, no version conflicts, no security vulnerabilities from third-party code. Just pure Claude Code orchestration.
+
+---
+
+**Transform your Claude Code subagents from stateless workers into a continuously learning team - with zero external dependencies!**
 
 *If this helps your subagents remember, please ⭐ the repo!*
