@@ -74,15 +74,17 @@ This **zero-dependency** system orchestrates persistent memory through Claude Co
 ## 🎮 How It Works
 
 ### Architecture: Zero-Dependency Orchestration
-The system achieves persistent memory **without any external dependencies** by leveraging Claude Code's native subagent system. A specialized `memory-manager` subagent acts as the central coordinator, invoked automatically through hook mechanisms to manage all memory operations.
+The system achieves persistent memory **without any external dependencies** by leveraging Claude Code's native subagent system. A specialized `memory-manager` subagent acts as the central coordinator, creating context caches that subagents can load directly - cleverly avoiding Claude Code's session-within-a-session constraints.
 
 ### Automatic Workflow
 1. **You invoke a subagent** → `Use task-executor to implement feature X`
-2. **PreToolUse hook fires** → Invokes `memory-manager` subagent to load relevant context
-3. **Subagent works** → Has full awareness of past work and lessons
-4. **Subagent creates TRD** → Documents discoveries before completing
-5. **SubagentStop hook fires** → Invokes `memory-manager` to process TRD and update memories
-6. **Knowledge saved** → Available for all future subagent sessions
+2. **PreToolUse hook fires** → Invokes `memory-manager` subagent to create a context cache file
+3. **Cache created** → Memory-manager writes relevant context to `.claude/cache/task-{id}.md`
+4. **Subagent prompted** → Hook instructs subagent to read the cache file directly
+5. **Subagent works** → Has full awareness of past work and lessons from the cache
+6. **Subagent creates TRD** → Documents discoveries before completing
+7. **SubagentStop hook fires** → Invokes `memory-manager` to process TRD and update memories
+8. **Knowledge saved** → Available for all future subagent sessions
 
 ### Manual Operations via Slash Commands
 
@@ -207,8 +209,9 @@ This system is built entirely on Claude Code's native capabilities:
 - **Native Hooks** - Uses Claude Code's built-in hook system for automation
 - **Native Commands** - Slash commands are standard Claude Code commands
 - **Native File Operations** - Uses only Read/Write/Edit tools available to all subagents
+- **Cache-Based Architecture** - Avoids session-within-a-session constraints through file-based context passing
 
-**Result:** No external packages, no version conflicts, no security vulnerabilities from third-party code. Just pure Claude Code orchestration.
+**Result:** No external packages, no version conflicts, no security vulnerabilities from third-party code. Just pure Claude Code orchestration that works within platform constraints.
 
 ---
 
