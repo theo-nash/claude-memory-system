@@ -56,6 +56,25 @@ print_help() {
 }
 
 # Detect if we're in a project context or global context
+# Test MCP server health
+test_mcp_health() {
+    local mcp_dir="$1"
+    
+    if [[ -d "$mcp_dir/venv" ]]; then
+        # Test if MCP module can be imported
+        local test_result
+        test_result=$("$mcp_dir/venv/bin/python" -c "import mcp.server; print('OK')" 2>&1) || true
+        
+        if [[ "$test_result" == "OK" ]]; then
+            return 0
+        else
+            return 1
+        fi
+    else
+        return 1
+    fi
+}
+
 detect_memory_context() {
     if [[ -f ".claude/agents/memory-manager.md" ]]; then
         export MEMORY_CONTEXT="project"
@@ -80,12 +99,12 @@ detect_memory_context() {
     print_info "Using $MEMORY_CONTEXT memory context ($MEMORY_MANAGER_PATH)"
 }
 
-# Enhanced status command
+# Enhanced status command with MCP checks
 show_status() {
     detect_memory_context
     
-    echo "Memory System Status"
-    echo "==================="
+    echo "Memory & Messaging System Status"
+    echo "================================="
     echo ""
     echo "Context: $MEMORY_CONTEXT"
     echo "Location: $CLAUDE_DIR"
@@ -130,6 +149,150 @@ show_status() {
         fi
     else
         print_warning "Memory directory: Not initialized"
+    fi
+    
+    # Check MCP messaging server
+    echo ""
+    echo "MCP Messaging System:"
+    echo "--------------------"
+    
+    # Check if MCP server directory exists
+    local mcp_dir="$CLAUDE_DIR/mcp/agent-messaging"
+    if [[ -d "$mcp_dir" ]]; then
+        print_status "MCP server directory: Found"
+        
+        # Check if virtual environment exists and test health
+        if [[ -d "$mcp_dir/venv" ]]; then
+            print_status "Python virtual environment: Installed"
+            
+            # Test MCP server health
+            if test_mcp_health "$mcp_dir"; then
+                print_status "MCP server health: OK (modules importable)"
+            else
+                print_warning "MCP server health: Dependencies missing"
+                echo "  Run: cd $mcp_dir && venv/bin/pip install -r requirements.txt"
+            fi
+        else
+            print_warning "Python virtual environment: Not set up"
+            echo "  Run: cd $mcp_dir && python3 -m venv venv && venv/bin/pip install -r requirements.txt"
+        fi
+        
+        # Check MCP configuration
+        local mcp_config_found=false
+        if [[ "$MEMORY_CONTEXT" == "project" ]]; then
+            # Check project-level .mcp.json in PROJECT ROOT (not in .claude/)
+            if [[ -f ".mcp.json" ]]; then
+                if grep -q "agent-messaging" ".mcp.json" 2>/dev/null; then
+                    print_status "MCP configuration: Configured in .mcp.json (project root)"
+                    mcp_config_found=true
+                else
+                    print_warning "MCP configuration: Not found in .mcp.json"
+                fi
+            else
+                print_warning "MCP configuration: .mcp.json not found in project root"
+            fi
+        else
+            # Check global settings.json
+            if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
+                if grep -q "agent-messaging" "$CLAUDE_DIR/settings.json" 2>/dev/null; then
+                    print_status "MCP configuration: Configured in settings.json"
+                    mcp_config_found=true
+                else
+                    print_warning "MCP configuration: Not found in settings.json"
+                fi
+            else
+                print_warning "MCP configuration: settings.json not found"
+            fi
+        fi
+        
+        # Check messages directory
+        if [[ -d "$CLAUDE_DIR/messages" ]]; then
+            local message_count=$(find "$CLAUDE_DIR/messages" -name "*.json" 2>/dev/null | wc -l)
+            print_status "Messages directory: Found ($message_count message files)"
+        else
+            print_warning "Messages directory: Not found"
+        fi
+        
+        # Test Python availability
+        if command -v python3 &> /dev/null; then
+            local python_version=$(python3 --version 2>&1 | cut -d' ' -f2)
+            print_status "Python: Available (version $python_version)"
+        else
+            print_error "Python: Not found (required for MCP server)"
+        fi
+        
+        # Check if MCP server process is running (optional)
+        if pgrep -f "agent-messaging/server.py" > /dev/null 2>&1; then
+            print_status "MCP server process: Running"
+        else
+            print_info "MCP server process: Not currently running"
+            echo "  (Server starts automatically when Claude Code needs it)"
+        fi
+    else
+        print_warning "MCP server: Not installed"
+        echo "  The agent-to-agent messaging system is not set up"
+    fi
+    
+    # Check agent configurations
+    echo ""
+    echo "Agent Configuration:"
+    echo "-------------------"
+    
+    local agents_with_protocols=0
+    local agents_with_mcp_tools=0
+    local total_agents=0
+    
+    if [[ -d "$CLAUDE_DIR/agents" ]]; then
+        for agent_file in "$CLAUDE_DIR/agents"/*.md; do
+            if [[ -f "$agent_file" ]]; then
+                local agent_name=$(basename "$agent_file" .md)
+                total_agents=$((total_agents + 1))
+                
+                # Check for protocols
+                if grep -q "Inter-Agent Messaging Protocol" "$agent_file" 2>/dev/null; then
+                    agents_with_protocols=$((agents_with_protocols + 1))
+                fi
+                
+                # Check for MCP tools
+                if grep -q "mcp__agent-messaging" "$agent_file" 2>/dev/null || 
+                   ! grep -q "^tools:" "$agent_file" 2>/dev/null || 
+                   grep -q "^tools: All" "$agent_file" 2>/dev/null; then
+                    agents_with_mcp_tools=$((agents_with_mcp_tools + 1))
+                fi
+            fi
+        done
+        
+        echo "  Total agents: $total_agents"
+        echo "  Agents with messaging protocol: $agents_with_protocols"
+        echo "  Agents with MCP tool access: $agents_with_mcp_tools"
+        
+        if [[ $agents_with_protocols -lt $total_agents ]] || [[ $agents_with_mcp_tools -lt $total_agents ]]; then
+            print_warning "Some agents may need protocol/tool updates"
+            echo "  Run the SessionStart hook to update all agents"
+        else
+            print_status "All agents properly configured"
+        fi
+    else
+        print_warning "No agents directory found"
+    fi
+    
+    # Summary recommendations
+    echo ""
+    echo "Summary:"
+    echo "--------"
+    if [[ "$mcp_config_found" == true ]] && [[ -d "$mcp_dir/venv" ]] && [[ $agents_with_mcp_tools -eq $total_agents ]]; then
+        print_status "System fully configured for memory and messaging"
+    else
+        print_warning "System needs configuration updates:"
+        if [[ "$mcp_config_found" != true ]]; then
+            echo "  • Configure MCP server in settings"
+        fi
+        if [[ ! -d "$mcp_dir/venv" ]]; then
+            echo "  • Set up Python virtual environment for MCP"
+        fi
+        if [[ $agents_with_mcp_tools -lt $total_agents ]]; then
+            echo "  • Update agent configurations (restart Claude Code)"
+        fi
     fi
 }
 

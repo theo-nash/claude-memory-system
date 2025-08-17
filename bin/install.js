@@ -102,13 +102,13 @@ async function setupMCPServer(claudeDir, installType, spinner) {
 }
 
 async function configureMCPProject(claudeDir, mcpEnabled) {
-  // Configure project-level MCP in .claude/.mcp.json
+  // Configure project-level MCP in PROJECT_ROOT/.mcp.json (not in .claude/)
   if (!mcpEnabled) return;
   
-  const mcpConfigPath = path.join(claudeDir, '.mcp.json');
+  const mcpConfigPath = '.mcp.json';  // Project root, not in .claude
   let mcpConfig = {};
   
-  // Load existing .claude/.mcp.json if it exists
+  // Load existing .mcp.json if it exists
   if (fs.existsSync(mcpConfigPath)) {
     try {
       mcpConfig = await fs.readJson(mcpConfigPath);
@@ -122,19 +122,23 @@ async function configureMCPProject(claudeDir, mcpEnabled) {
     mcpConfig.mcpServers = {};
   }
   
-  // Add agent-messaging server with relative paths from .claude directory
-  const mcpServerPath = path.join('mcp', 'agent-messaging', 'server.py');
-  const messagesDir = 'messages';
+  // Add agent-messaging server with paths relative to project root
+  const pythonExecutable = process.platform === 'win32' 
+    ? path.join('.claude', 'mcp', 'agent-messaging', 'venv', 'Scripts', 'python')
+    : path.join('.claude', 'mcp', 'agent-messaging', 'venv', 'bin', 'python');
+  
+  const mcpServerPath = path.join('.claude', 'mcp', 'agent-messaging', 'server.py');
+  const messagesDir = path.join('.claude', 'messages');
   
   mcpConfig.mcpServers['agent-messaging'] = {
-    command: 'python',
+    command: pythonExecutable,
     args: [mcpServerPath],
     env: {
       MESSAGES_DIR: messagesDir
     }
   };
   
-  // Save .claude/.mcp.json
+  // Save .mcp.json in project root
   await fs.writeJson(mcpConfigPath, mcpConfig, { spaces: 2 });
 }
 
@@ -283,11 +287,16 @@ async function configureSettings(claudeDir, installType, mcpEnabled = false) {
       settings.mcpServers = {};
     }
     
+    // Use venv Python for global install too
+    const pythonExecutable = process.platform === 'win32'
+      ? path.join(process.env.HOME, '.claude', 'mcp', 'agent-messaging', 'venv', 'Scripts', 'python')
+      : path.join(process.env.HOME, '.claude', 'mcp', 'agent-messaging', 'venv', 'bin', 'python');
+    
     const mcpServerPath = path.join(process.env.HOME, '.claude', 'mcp', 'agent-messaging', 'server.py');
     const messagesDir = path.join(process.env.HOME, '.claude', 'messages');
     
     settings.mcpServers['agent-messaging'] = {
-      command: 'python',
+      command: pythonExecutable,
       args: [mcpServerPath],
       env: {
         MESSAGES_DIR: messagesDir
