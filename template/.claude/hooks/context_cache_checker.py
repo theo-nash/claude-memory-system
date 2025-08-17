@@ -110,9 +110,16 @@ Before calling the {subagent_type} subagent, please generate a context cache:
    Prompt: "Build a task-specific context cache for {subagent_type} at {generate_cache_filename(subagent_type, session_id)}. The agent's task is [short description of agent's task]"
 
 2. Then retry calling {subagent_type}:
-   Ensure you prompt the subagent to immediately read the context cache file at {generate_cache_filename(subagent_type, session_id)} before doing any work. This is critical context that the subagent should rely on to complete their work.
-
-This ensures {subagent_type} has relevant context from previous work before starting the task. He should rely heavily on this information to guide him.
+    Your prompt to the subagent MUST include these instructions:
+    
+    "CRITICAL: Before starting any work:
+    1. Read the context cache at {generate_cache_filename(subagent_type, session_id)}
+    2. Explore ALL files listed in the 'Recommended Reading' section - these contain crucial details for your task
+    3. Use this context to guide your entire approach
+    
+    [Your actual task instructions here]"
+    
+    This ensures {subagent_type} has full context and explores all relevant knowledge before starting.
 """
             
             print(guidance, file=sys.stderr)

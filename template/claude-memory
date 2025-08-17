@@ -306,7 +306,7 @@ main() {
             ;;
         "process-trd")
             local trd_path="$content"
-            local prompt="Use the memory-manager subagent to process the self-generated TRD from $agent_name. Read the TRD file at: $trd_path and update the appropriate memory files based on its significance level and content."
+            local prompt="Use the memory-manager subagent to process the self-generated TRD from $agent_name. The subagent must read the TRD file at: $trd_path and update the appropriate memory files based on its significance level and content."
             execute_memory_command "$prompt" "TRD processing" "$agent_name"
             ;;
     esac

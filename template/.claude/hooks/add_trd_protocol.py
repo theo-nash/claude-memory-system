@@ -74,6 +74,11 @@ Task: [One-line summary of what you were asked to do]
 - [New requirements/constraints discovered, or "None"]
 - [Architecture decisions, global impacts]
 - [Technical debt or improvements needed]
+
+## What I Learned
+- [Areas of improvement to make your work more efficient next time]
+- [Patterns or processes to improve your work]
+- [Errors you made to avoid in the future]
 ```
 
 ### Significance Guidelines
