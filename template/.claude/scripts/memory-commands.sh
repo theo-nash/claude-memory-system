@@ -205,12 +205,6 @@ EOF
 *No patterns documented yet*
 EOF
 
-    cat > "$CLAUDE_DIR/memory/team/handoff-protocols.md" << 'EOF'
-# Handoff Protocols
-
-## Standard Formats
-*No protocols established yet*
-EOF
 
     # Reset project files
     echo "Resetting project context..."

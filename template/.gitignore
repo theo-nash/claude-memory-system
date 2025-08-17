@@ -1,0 +1,57 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+*.cover
+.hypothesis/
+
+# MCP server specific
+.claude/mcp/*/venv/
+.claude/mcp/*/__pycache__/
+.claude/mcp/*/*.pyc
+.claude/mcp/*/test_server.py
+
+# Message archives (keep current messages, ignore archives)
+.claude/messages/archive/
+
+# Cache files
+.claude/cache/
+
+# Memory system archives
+.claude/memory/archive/
+
+# Development
+*.log
+*.swp
+*.swo
+*~
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Environment files
+.env
+.env.local
+
+# Claude Code settings (keep template, ignore local)
+.claude/settings.local.json
+
+# Session transcripts
+.claude/transcripts/
+
+# Test artifacts
+test_*.json
+/tmp/
+*.tmp

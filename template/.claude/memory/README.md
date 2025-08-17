@@ -273,7 +273,7 @@ chmod +x claude-memory
 - **claude-memory** - Shell wrapper for direct memory operations
 - **14 Slash Commands** - Native Claude Code commands in `.claude/commands/`
 - **3 Automated Hooks**:
-  - `add_trd_protocol.py` - Adds TRD protocol at session start
+  - `initialize_agent_system.py` - Complete agent initialization at session start
   - `subagent_memory_analyzer.py` - Processes insights when agents complete
   - `context_cache_checker.py` - Loads context when agents start
 

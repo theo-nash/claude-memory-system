@@ -10,3 +10,26 @@ package-lock.json
 *~
 dist/
 build/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+
+# MCP server environments
+template/.claude/mcp/*/venv/
+template/.claude/mcp/*/__pycache__/
+template/.claude/mcp/*/*.pyc
+
+# Test artifacts
+test_*.json
+*.tmp

@@ -1,6 +1,6 @@
 {
   "name": "claude-subagent-memory",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Persistent memory and learning system for Claude Code subagents",
   "keywords": [
     "claude",

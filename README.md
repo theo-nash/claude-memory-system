@@ -41,6 +41,14 @@ This **zero-dependency** system orchestrates persistent memory through Claude Co
 - 📚 **Structured Memory Files** - Git-friendly markdown knowledge base
 - ⚡ **Slash Commands** - Native Claude Code commands for memory operations
 
+## 🆕 New: Agent-to-Agent Messaging
+
+The system now includes an **MCP (Model Context Protocol) server** for direct agent-to-agent messaging:
+- Agents can send targeted messages to specific other agents
+- Messages are delivered through MCP tools (create_message, read_messages)
+- Automatic setup during installation (requires Python 3.8+)
+- Zero additional configuration needed
+
 ## 📦 What Gets Installed
 
 ```
@@ -53,7 +61,7 @@ This **zero-dependency** system orchestrates persistent memory through Claude Co
 │   ├── memory-search.md       # /memory-search "term"
 │   └── ... (14 commands)
 ├── hooks/                      # Automation hooks (fire automatically)
-│   ├── add_trd_protocol.py    # SessionStart: Adds TRD protocol to subagents
+│   ├── initialize_agent_system.py  # SessionStart: Complete agent initialization
 │   ├── subagent_memory_analyzer.py  # SubagentStop: Processes completed work
 │   └── context_cache_checker.py     # PreToolUse: Loads context for subagents
 ├── scripts/

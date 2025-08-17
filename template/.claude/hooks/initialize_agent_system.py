@@ -1,18 +1,40 @@
 #!/usr/bin/env python3
 """
-SessionStart Hook: Initialize Agent Memory System
+SessionStart Hook: Initialize Complete Agent System
 
-1. Adds TRD (Task Reflection Document) protocol to all agent definition files
-2. Creates memory directory structure for all agents
-3. Initializes placeholder memory files where needed
-Runs silently at session start to ensure all agents are properly configured.
+This comprehensive initialization hook prepares all agents for effective collaboration by:
+
+1. **Protocol Setup**:
+   - Adds TRD (Task Reflection Document) protocol for knowledge capture
+   - Adds Inter-Agent Messaging protocol for direct communication
+   - Personalizes both protocols with each agent's actual name from frontmatter
+
+2. **Tool Configuration**:
+   - Ensures all agents have access to MCP messaging tools
+   - Adds tools to restricted lists when needed
+   - Handles special cases (e.g., memory-manager gets tools but not protocols)
+
+3. **Memory Scaffolding**:
+   - Creates complete memory directory structure for all agents
+   - Initializes placeholder memory files (work-history, current-focus, expertise, lessons)
+   - Sets up team, project, and manager directories
+
+4. **Agent Identity**:
+   - Parses agent names from YAML frontmatter (not filename)
+   - Ensures consistent naming across all systems
+   - Falls back to filename if no frontmatter exists
+
+Runs silently at SessionStart to ensure all agents are properly configured for both
+memory retention and inter-agent communication.
 """
 
 import os
 import sys
 import json
+import re
 from datetime import datetime
 from pathlib import Path
+from typing import Optional, Dict
 
 def get_trd_protocol(agent_name):
     """Generate the TRD protocol section for an agent"""
@@ -55,10 +77,10 @@ Task: [One-line summary of what you were asked to do]
 - [What worked well, what didn't]
 - [Surprising findings or confirmations]
 
-## Handoffs Created
-- [Work ready for other agents, or "None"]
-- [Include specific file paths and next steps]
-- [Format: "Ready for [agent]: [what] at [path]"]
+## Messages Sent
+- [Messages sent to other agents via create_message(), or "None"]
+- [Format: "To [agent]: [brief summary of message]"]
+- [Note: Use messaging tools for direct coordination, not handoffs]
 
 ## Issues for Follow-up
 - [Problems needing attention, or "None"]
@@ -83,10 +105,61 @@ Task: [One-line summary of what you were asked to do]
 
 ### Significance Guidelines
 - **Routine**: ~70% of tasks. Standard implementation, using known patterns
-- **Notable**: ~25% of tasks. Found something useful, created handoffs, or hit interesting issues
+- **Notable**: ~25% of tasks. Found something useful, sent important messages, or hit interesting issues
 - **Significant**: ~5% of tasks. Major discoveries, architecture changes, or breakthrough solutions
 
 This TRD is critical for team learning and knowledge sharing. Creating it helps future tasks build on your discoveries and avoid repeated mistakes.
+"""
+
+def get_messaging_protocol(agent_name):
+    """Generate the messaging protocol section for an agent"""
+    return f"""
+
+## Inter-Agent Messaging Protocol
+
+**IMPORTANT**: You have MCP tools for direct agent-to-agent communication.
+
+### At Session Start
+1. **Check messages**: Always check for messages from other agents first
+   ```
+   read_messages(agent_name="{agent_name}")
+   ```
+2. **List available agents**: See who you can communicate with
+   ```
+   list_agents()
+   ```
+
+### During Your Work
+When you discover information relevant to another agent:
+```
+create_message(
+    from_agent="{agent_name}",
+    to_agent="target-agent-name",
+    message="Specific information they need",
+    priority="high"  # or "medium", "low"
+)
+```
+
+### Message Guidelines
+- **High priority**: Blocking issues, critical information
+- **Medium priority**: Coordination needs, useful updates
+- **Low priority**: FYI, non-urgent discoveries
+
+### What to Share via Messages
+- Specific technical details (e.g., "Permission system uses bitmap: 0x0001=READ")
+- Completed work ready for next agent (e.g., "API endpoints complete at /api/v2/")
+- Blockers or issues (e.g., "Database schema missing user_roles table")
+- Important discoveries (e.g., "Found existing auth system in /lib/auth/")
+
+### Identity Consistency
+- Always use "{agent_name}" as your agent name in all messaging operations
+- This ensures messages are properly routed to and from you
+
+### Before Completing Tasks
+If you discovered information useful to specific agents but didn't send it during work:
+- Review your findings
+- Send relevant messages to appropriate agents
+- Use `clear_messages(agent_name="{agent_name}")` if inbox is cluttered
 """
 
 def has_trd_protocol(content):
@@ -99,28 +172,180 @@ def has_trd_protocol(content):
     ]
     return any(indicator in content for indicator in indicators)
 
-def add_trd_to_agent(agent_path, agent_name):
-    """Add TRD protocol to an agent definition file"""
+def has_messaging_protocol(content):
+    """Check if file already has messaging protocol"""
+    indicators = [
+        "Inter-Agent Messaging Protocol",
+        "read_messages(agent_name=",
+        "create_message(from_agent=",
+        "## Inter-Agent Messaging"
+    ]
+    return any(indicator in content for indicator in indicators)
+
+def parse_agent_frontmatter(content: str) -> Optional[Dict[str, str]]:
+    """Parse agent file to extract name and other fields from frontmatter"""
+    if not content.startswith('---'):
+        return None
+        
+    # Find the end of frontmatter
+    lines = content.split('\n')
+    end_index = -1
+    for i in range(1, len(lines)):
+        if lines[i].strip() == '---':
+            end_index = i
+            break
+            
+    if end_index == -1:
+        return None
+        
+    # Parse the frontmatter
+    name = None
+    description = None
+    tools = None
+    
+    for i in range(1, end_index):
+        line = lines[i]
+        if line.startswith('name:'):
+            name = line.split(':', 1)[1].strip()
+        elif line.startswith('description:'):
+            description = line.split(':', 1)[1].strip()
+        elif line.startswith('tools:'):
+            tools = line.split(':', 1)[1].strip()
+            
+    if name:
+        return {
+            'name': name,
+            'description': description or '',
+            'tools': tools or ''
+        }
+    return None
+
+def ensure_mcp_tools_access(content, agent_name):
+    """Ensure agent has access to MCP messaging tools"""
+    # MCP messaging tools that agents need
+    mcp_tools = [
+        'mcp__agent-messaging__create_message',
+        'mcp__agent-messaging__read_messages',
+        'mcp__agent-messaging__clear_messages',
+        'mcp__agent-messaging__list_agents'
+    ]
+    
+    # Parse frontmatter to check tools configuration
+    if not content.startswith('---'):
+        return content, False
+    
+    # Find the end of frontmatter
+    lines = content.split('\n')
+    end_index = -1
+    for i in range(1, len(lines)):
+        if lines[i].strip() == '---':
+            end_index = i
+            break
+    
+    if end_index == -1:
+        return content, False
+    
+    # Check if tools line exists in frontmatter
+    tools_line_index = -1
+    tools_value = None
+    for i in range(1, end_index):
+        if lines[i].startswith('tools:'):
+            tools_line_index = i
+            tools_value = lines[i].split(':', 1)[1].strip()
+            break
+    
+    # If no tools specified or "All" specified, agent has access to all tools
+    if tools_line_index == -1 or tools_value in ['All', 'all', '"All"', "'All'"]:
+        # Agent already has access to all tools (including MCP)
+        return content, False
+    
+    # Parse existing tools
+    existing_tools = [t.strip() for t in tools_value.split(',')]
+    
+    # Check if MCP tools are already present
+    has_all_mcp = all(tool in existing_tools for tool in mcp_tools)
+    
+    if has_all_mcp:
+        return content, False
+    
+    # Add missing MCP tools
+    missing_tools = [tool for tool in mcp_tools if tool not in existing_tools]
+    all_tools = existing_tools + missing_tools
+    
+    # Format the new tools line (break into multiple lines if too long)
+    tools_joined = ', '.join(all_tools)
+    if len(tools_joined) > 150:  # Increased threshold
+        # Multi-line format - using proper YAML list syntax
+        tools_str = 'tools:\n'
+        for tool in all_tools:
+            tools_str += f'  - {tool}\n'
+        tools_str = tools_str.rstrip('\n')  # Remove last newline
+    else:
+        # Single line format
+        tools_str = 'tools: ' + tools_joined
+    
+    # Replace the tools line
+    lines[tools_line_index] = tools_str
+    
+    # Reconstruct content
+    new_content = '\n'.join(lines)
+    return new_content, True
+
+def add_protocols_to_agent(agent_path, filename_based_name):
+    """Add TRD and messaging protocols to an agent definition file, and ensure MCP tools access"""
     
     # Read current content
     with open(agent_path, 'r') as f:
         content = f.read()
     
-    # Check if already has TRD protocol
-    if has_trd_protocol(content):
-        print(f"  ⏭️  {agent_name}: Already has TRD protocol")
+    # Parse frontmatter to get actual agent name
+    frontmatter = parse_agent_frontmatter(content)
+    if frontmatter and frontmatter['name']:
+        agent_name = frontmatter['name']
+    else:
+        # Fallback to filename if no frontmatter or name field
+        agent_name = filename_based_name
+        print(f"  ⚠️  {filename_based_name}: No name in frontmatter, using filename")
+    
+    # Track what was added/modified
+    added_trd = False
+    added_messaging = False
+    added_tools = False
+    
+    # First ensure MCP tools access (modifies frontmatter)
+    content, added_tools = ensure_mcp_tools_access(content, agent_name)
+    
+    # Check and add TRD protocol if missing
+    if not has_trd_protocol(content):
+        trd_section = get_trd_protocol(agent_name)
+        content = content.rstrip() + trd_section
+        added_trd = True
+    
+    # Check and add messaging protocol if missing
+    if not has_messaging_protocol(content):
+        messaging_section = get_messaging_protocol(agent_name)
+        content = content.rstrip() + messaging_section
+        added_messaging = True
+    
+    # Write back if anything was added/modified
+    if added_trd or added_messaging or added_tools:
+        with open(agent_path, 'w') as f:
+            f.write(content)
+        
+        # Report what was added
+        updates = []
+        if added_trd:
+            updates.append("TRD protocol")
+        if added_messaging:
+            updates.append("messaging protocol")
+        if added_tools:
+            updates.append("MCP tools")
+        
+        print(f"  ✅ {agent_name}: Added {', '.join(updates)}")
+        return True
+    else:
+        print(f"  ⏭️  {agent_name}: Already has all protocols and tools")
         return False
-    
-    # Add TRD protocol at the end
-    trd_section = get_trd_protocol(agent_name)
-    new_content = content.rstrip() + trd_section
-    
-    # Write back
-    with open(agent_path, 'w') as f:
-        f.write(new_content)
-    
-    print(f"  ✅ {agent_name}: Added TRD protocol")
-    return True
 
 def ensure_manager_scaffolding(claude_dir, is_hook=False):
     """Create manager directory with core files"""
@@ -405,16 +630,41 @@ def main():
     skipped_count = 0
     
     for agent_file in agent_files:
-        agent_name = agent_file.stem
+        filename_based_name = agent_file.stem
         
-        # Skip memory-manager
-        if agent_name == "memory-manager":
-            if not is_hook:
-                print(f"  ⏭️  {agent_name}: Skipped (memory-manager)")
-            skipped_count += 1
+        # Parse the file to get the actual agent name
+        with open(agent_file, 'r') as f:
+            file_content = f.read()
+        
+        frontmatter = parse_agent_frontmatter(file_content)
+        if frontmatter and frontmatter['name']:
+            actual_agent_name = frontmatter['name']
+        else:
+            actual_agent_name = filename_based_name
+        
+        # Don't skip memory-manager for tools check, but skip protocols
+        if actual_agent_name == "memory-manager":
+            # Only check/add MCP tools for memory-manager
+            content = file_content  # Already read above
+            
+            content, added_tools = ensure_mcp_tools_access(content, actual_agent_name)
+            
+            if added_tools:
+                with open(agent_file, 'w') as f:
+                    f.write(content)
+                if not is_hook:
+                    print(f"  ✅ {actual_agent_name}: Added MCP tools (protocols skipped)")
+                updated_count += 1
+            else:
+                if not is_hook:
+                    print(f"  ⏭️  {actual_agent_name}: Has MCP tools (protocols skipped)")
+                skipped_count += 1
+            
+            # Still ensure memory scaffolding
+            ensure_memory_scaffolding(actual_agent_name, claude_dir, is_hook)
             continue
         
-        # Add TRD protocol (suppress output if running as hook)
+        # Add protocols (suppress output if running as hook)
         original_print = print if not is_hook else lambda *args, **kwargs: None
         
         # Temporarily replace print for the function call
@@ -423,13 +673,14 @@ def main():
             import builtins
             builtins.print = lambda *args, **kwargs: None
         
-        if add_trd_to_agent(agent_file, agent_name):
+        if add_protocols_to_agent(agent_file, filename_based_name):
             updated_count += 1
         else:
             skipped_count += 1
         
         # Always ensure memory scaffolding for all agents (except memory-manager)
-        ensure_memory_scaffolding(agent_name, claude_dir, is_hook)
+        # Use the actual agent name for memory scaffolding
+        ensure_memory_scaffolding(actual_agent_name, claude_dir, is_hook)
         
         # Restore print
         if is_hook:
@@ -438,7 +689,7 @@ def main():
     # Only show summary if not running as hook
     if not is_hook:
         print("=" * 50)
-        print(f"✅ TRD Protocol: {updated_count} updated, {skipped_count} skipped")
+        print(f"✅ Protocols: {updated_count} updated, {skipped_count} skipped")
         print(f"✅ Memory scaffolding initialized for all agents")
     elif updated_count > 0:
         # Silent success message to stderr for hook mode
@@ -461,16 +712,20 @@ def main():
 if __name__ == "__main__":
     # Support --help flag
     if len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h']:
-        print("Initialize Agent Memory System")
-        print("Usage: python3 add_trd_protocol.py")
-        print("\nThis script (runs at SessionStart):")
+        print("Initialize Complete Agent System")
+        print("Usage: python3 initialize_agent_system.py")
+        print("\nThis comprehensive hook (runs at SessionStart):")
+        print("  - Parses agent names from YAML frontmatter")
         print("  - Adds TRD protocol to all agent definitions")
+        print("  - Adds messaging protocol to all agent definitions")
+        print("  - Ensures MCP messaging tools access for all agents")
         print("  - Creates complete memory directory structure")
         print("  - Initializes placeholder memory files for all agents")
         print("  - Sets up manager, team, and project directories")
         print("  - Creates cache directory for context files")
-        print("  - Skips memory-manager agent")
+        print("  - Handles memory-manager specially (tools only, no protocols)")
         print("  - Preserves existing files (only creates missing ones)")
+        print("  - Personalizes all protocols with correct agent names")
         sys.exit(0)
     
     main()
